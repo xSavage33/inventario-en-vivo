@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventario - Santorini Bar</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<style>
+  :root {
+    --bg:#07080a;--surface:#0f1115;--surface-2:#161920;--surface-3:#1c1f28;
+    --border:#252830;--border-accent:#35383f;
+    --text:#e4e4ea;--text-muted:#6b6e7a;
+    --accent-bodega:#f59e0b;--accent-bodega-dim:rgba(245,158,11,0.08);
+    --accent-enfriador:#06b6d4;--accent-enfriador-dim:rgba(6,182,212,0.08);
+    --accent-exhibicion:#a855f7;--accent-exhibicion-dim:rgba(168,85,247,0.08);
+    --danger:#ef4444;--success:#22c55e;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+  .header{padding:1.5rem 2rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:rgba(7,8,10,0.92);backdrop-filter:blur(20px);z-index:100;flex-wrap:wrap;gap:1rem}
+  .header-left{display:flex;align-items:center;gap:0.8rem}
+  .logo{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--accent-bodega),var(--accent-enfriador));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.8rem;color:#000;font-family:'Space Mono',monospace}
+  .header h1{font-family:'Space Mono',monospace;font-size:1.1rem;font-weight:700;letter-spacing:-0.5px}
+  .header h1 span{color:var(--text-muted);font-weight:400;font-size:0.9rem}
+  .header-stats{display:flex;gap:1rem;flex-wrap:wrap}
+  .stat-pill{display:flex;align-items:center;gap:0.4rem;padding:0.3rem 0.8rem;background:var(--surface);border:1px solid var(--border);border-radius:100px;font-size:0.75rem;font-family:'Space Mono',monospace}
+  .stat-dot{width:7px;height:7px;border-radius:50%}
+
+  .tabs-container{padding:1.2rem 2rem 0;display:flex;gap:0.4rem}
+  .tab{padding:0.65rem 1.2rem;border:1px solid var(--border);border-bottom:none;border-radius:10px 10px 0 0;background:var(--surface);color:var(--text-muted);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:0.85rem;font-weight:500;transition:all 0.25s;display:flex;align-items:center;gap:0.5rem;position:relative;user-select:none}
+  .tab:hover{color:var(--text);background:var(--surface-2)}
+  .tab.active{background:var(--surface-2);color:var(--text);border-color:var(--border-accent)}
+  .tab.active::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px}
+  .tab[data-s="bodega"].active::after{background:var(--accent-bodega)}
+  .tab[data-s="enfriadores"].active::after{background:var(--accent-enfriador)}
+  .tab[data-s="exhibicion"].active::after{background:var(--accent-exhibicion)}
+  .tab-count{font-family:'Space Mono',monospace;font-size:0.65rem;padding:0.1rem 0.45rem;border-radius:100px;background:var(--border);color:var(--text-muted)}
+  .tab[data-s="bodega"].active .tab-count{background:var(--accent-bodega-dim);color:var(--accent-bodega)}
+  .tab[data-s="enfriadores"].active .tab-count{background:var(--accent-enfriador-dim);color:var(--accent-enfriador)}
+  .tab[data-s="exhibicion"].active .tab-count{background:var(--accent-exhibicion-dim);color:var(--accent-exhibicion)}
+
+  .main{padding:0 2rem 3rem}
+  .panel{display:none;background:var(--surface-2);border:1px solid var(--border-accent);border-radius:0 12px 12px 12px;overflow:hidden;animation:fadeIn 0.25s ease}
+  .panel.active{display:block}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+  .toolbar{padding:1rem 1.5rem;border-bottom:1px solid var(--border);display:flex;gap:0.8rem;align-items:center;flex-wrap:wrap}
+  .search-wrap{position:relative;flex:1;min-width:200px}
+  .search-wrap::before{content:'\2315';position:absolute;left:0.7rem;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:1rem}
+  .search-input{width:100%;padding:0.6rem 1rem 0.6rem 2rem;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.85rem;outline:none;transition:border-color 0.2s}
+  .search-input:focus{border-color:var(--border-accent)}
+  .search-input::placeholder{color:var(--text-muted);opacity:0.5}
+  .btn{padding:0.55rem 1.1rem;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.8rem;font-weight:600;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:0.4rem;white-space:nowrap}
+  .btn-add-new{background:var(--surface-3);color:var(--text-muted);border:1px solid var(--border)!important}
+  .btn-add-new:hover{color:var(--text);border-color:var(--border-accent)!important}
+  .btn-pdf{background:var(--surface-3);color:var(--text-muted);border:1px solid var(--border)!important}
+  .btn-pdf:hover{color:var(--text);border-color:var(--text)!important}
+  .btn-clear{background:transparent;color:var(--danger);opacity:0.6;border:1px solid transparent!important}
+  .btn-clear:hover{opacity:1;background:rgba(239,68,68,0.08)}
+
+  .filter-pills{padding:0.6rem 1.5rem 0.8rem;display:flex;gap:0.4rem;flex-wrap:wrap;border-bottom:1px solid var(--border)}
+  .filter-pill{padding:0.3rem 0.8rem;border-radius:100px;background:var(--surface);border:1px solid var(--border);font-size:0.72rem;color:var(--text-muted);cursor:pointer;transition:all 0.2s;user-select:none}
+  .filter-pill:hover{color:var(--text);border-color:var(--border-accent)}
+  .filter-pill.active{background:var(--text);color:var(--bg);border-color:var(--text)}
+
+  .products-grid{padding:1rem 1.5rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:0.6rem;max-height:58vh;overflow-y:auto}
+  .product-card{display:flex;align-items:center;justify-content:space-between;padding:0.65rem 1rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;transition:all 0.2s;gap:0.8rem}
+  .product-card:hover{border-color:var(--border-accent)}
+  .product-card.has-qty{border-left:3px solid var(--success)}
+  .product-info{flex:1;min-width:0}
+  .product-name{font-size:0.83rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .product-cat{font-size:0.65rem;color:var(--text-muted);font-family:'Space Mono',monospace;margin-top:0.1rem}
+  .qty-control{display:flex;align-items:center;gap:0.3rem;flex-shrink:0}
+  .qty-btn{width:28px;height:28px;border-radius:6px;background:var(--surface-3);border:1px solid var(--border);color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem;transition:all 0.15s;line-height:1}
+  .qty-btn:hover{color:var(--text);border-color:var(--border-accent)}
+  .qty-input{width:55px;text-align:center;padding:0.35rem 0.2rem;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Space Mono',monospace;font-size:0.85rem;outline:none}
+  .qty-input:focus{border-color:var(--border-accent)}
+
+  .summary-bar{padding:0.8rem 1.5rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.3);font-size:0.8rem}
+  .summary-bar .total-label{color:var(--text-muted)}
+  .summary-bar .total-value{font-family:'Space Mono',monospace;font-weight:700;font-size:0.95rem}
+
+  .empty-state{padding:3rem;text-align:center;color:var(--text-muted)}
+  .empty-state p:first-child{font-weight:600;opacity:0.5;margin-bottom:0.3rem}
+
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(5px);z-index:200;align-items:center;justify-content:center}
+  .modal-overlay.show{display:flex}
+  .modal{background:var(--surface-2);border:1px solid var(--border-accent);border-radius:14px;padding:2rem;width:90%;max-width:400px;animation:fadeIn 0.2s ease}
+  .modal h3{font-size:1rem;margin-bottom:1.2rem;font-family:'Space Mono',monospace}
+  .modal .form-group{display:flex;flex-direction:column;gap:0.35rem;margin-bottom:1rem}
+  .modal label{font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted)}
+  .modal input,.modal select{padding:0.6rem 0.8rem;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.9rem;outline:none}
+  .modal select{cursor:pointer}
+  .modal input:focus,.modal select:focus{border-color:var(--border-accent)}
+  .modal-actions{display:flex;gap:0.6rem;margin-top:1.5rem}
+  .btn-modal-add{flex:1;padding:0.7rem;background:var(--text);color:var(--bg);border:none;border-radius:8px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:0.9rem}
+  .btn-modal-add:hover{opacity:0.9}
+  .btn-modal-cancel{padding:0.7rem 1.2rem;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text-muted);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:0.9rem}
+  .btn-modal-cancel:hover{color:var(--text)}
+
+  .toast{position:fixed;bottom:1.5rem;right:1.5rem;padding:0.7rem 1.3rem;background:var(--surface);border:1px solid var(--border-accent);border-radius:10px;font-size:0.82rem;display:flex;align-items:center;gap:0.5rem;transform:translateY(80px);opacity:0;transition:all 0.4s cubic-bezier(0.16,1,0.3,1);z-index:300;box-shadow:0 10px 40px rgba(0,0,0,0.5)}
+  .toast.show{transform:translateY(0);opacity:1}
+  .toast-success{border-left:3px solid var(--success)}
+  .toast-error{border-left:3px solid var(--danger)}
+
+  @media(max-width:768px){
+    .header{padding:1rem}
+    .tabs-container{padding:0.8rem 1rem 0;overflow-x:auto}
+    .main{padding:0 1rem 2rem}
+    .toolbar{padding:0.8rem 1rem}
+    .filter-pills{padding:0.5rem 1rem 0.6rem}
+    .products-grid{padding:0.8rem 1rem;grid-template-columns:1fr}
+    .panel{border-radius:0 0 12px 12px}
+  }
+  ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <div class="logo">SB</div>
+    <h1>SANTORINI BAR <span>/ inventario</span></h1>
+  </div>
+  <div class="header-stats">
+    <div class="stat-pill"><div class="stat-dot" style="background:var(--accent-bodega)"></div>Bodega: <strong id="stat-bodega">0</strong></div>
+    <div class="stat-pill"><div class="stat-dot" style="background:var(--accent-enfriador)"></div>Enfriadores: <strong id="stat-enfriadores">0</strong></div>
+    <div class="stat-pill"><div class="stat-dot" style="background:var(--accent-exhibicion)"></div>Exhibicion: <strong id="stat-exhibicion">0</strong></div>
+  </div>
+</header>
+
+<div class="tabs-container">
+  <div class="tab active" data-s="bodega" onclick="switchTab('bodega')">&#x1F4E6; Bodega <span class="tab-count" id="count-bodega">0</span></div>
+  <div class="tab" data-s="enfriadores" onclick="switchTab('enfriadores')">&#x2744; Enfriadores <span class="tab-count" id="count-enfriadores">0</span></div>
+  <div class="tab" data-s="exhibicion" onclick="switchTab('exhibicion')">&#x1F3AA; Exhibicion <span class="tab-count" id="count-exhibicion">0</span></div>
+</div>
+
+<main class="main">
+  <div class="panel active" id="panel-bodega"></div>
+  <div class="panel" id="panel-enfriadores"></div>
+  <div class="panel" id="panel-exhibicion"></div>
+</main>
+
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h3>+ Nuevo producto</h3>
+    <div class="form-group"><label>Nombre del producto</label><input type="text" id="modal-nombre" placeholder="Ej: Cerveza Aguila Light - 330 ML"></div>
+    <div class="form-group"><label>Categoria</label>
+      <select id="modal-cat">
+        <option>Aguardientes</option><option>Ron Medellin</option><option>Ron Caldas</option>
+        <option>Tequila</option><option>Whisky</option><option>Vodka</option><option>Vino</option>
+        <option>Cervezas</option><option>Aguas y refrescos</option><option>Sodas</option>
+        <option>Energizantes</option><option>Otro</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Seccion</label>
+      <select id="modal-section">
+        <option value="all">Todas las secciones</option>
+        <option value="bodega">Solo Bodega</option>
+        <option value="enfriadores">Solo Enfriadores</option>
+        <option value="exhibicion">Solo Exhibicion</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-modal-add" onclick="addNewProduct()">Agregar producto</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const PRODUCTS=[
+  {nombre:"Amarillo de manzanares - 375 ML",cat:"Aguardientes"},
+  {nombre:"Amarillo de manzanares - 750 ML",cat:"Aguardientes"},
+  {nombre:"Amarillo de manzanares - 1 LT",cat:"Aguardientes"},
+  {nombre:"Aguardiente sin azucar 24 - 375 ML",cat:"Aguardientes"},
+  {nombre:"Aguardiente sin azucar 24 - 750 ML",cat:"Aguardientes"},
+  {nombre:"Aguardiente sin azucar 24 - 1000 ML",cat:"Aguardientes"},
+  {nombre:"Aguardiente sin azucar 24 - 1750 ML",cat:"Aguardientes"},
+  {nombre:"Aguardiente antioqueno - 375 ML",cat:"Aguardientes"},
+  {nombre:"Aguardiente antioqueno - 750 ML",cat:"Aguardientes"},
+  {nombre:"Ron Medellin 3 anos - 375 ML",cat:"Ron Medellin"},
+  {nombre:"Ron Medellin 3 anos - 750 ML",cat:"Ron Medellin"},
+  {nombre:"Ron Medellin 3 anos - 1000 ML",cat:"Ron Medellin"},
+  {nombre:"Ron Medellin 5 anos - 750 ML",cat:"Ron Medellin"},
+  {nombre:"Ron Medellin 8 anos - 375 ML",cat:"Ron Medellin"},
+  {nombre:"Ron Medellin 8 anos - 750 ML",cat:"Ron Medellin"},
+  {nombre:"Ron Medellin 12 anos - 750 ML",cat:"Ron Medellin"},
+  {nombre:"Ron Medellin 18 anos - 750 ML",cat:"Ron Medellin"},
+  {nombre:"Ron Medellin 19 anos - 750 ML",cat:"Ron Medellin"},
+  {nombre:"Ron Medellin 29 - 375 ML",cat:"Ron Medellin"},
+  {nombre:"Ron Medellin 29 - 750 ML",cat:"Ron Medellin"},
+  {nombre:"Ron Caldas 8 anos - 375 ML",cat:"Ron Caldas"},
+  {nombre:"Ron Caldas 8 anos - 750 ML",cat:"Ron Caldas"},
+  {nombre:"Ron Caldas Esencial - 750 ML",cat:"Ron Caldas"},
+  {nombre:"Ron Caldas Esencial - 1 LT",cat:"Ron Caldas"},
+  {nombre:"Ron Caldas Tradicional - 750 ML",cat:"Ron Caldas"},
+  {nombre:"Ron Caldas Tradicional - 1 LT",cat:"Ron Caldas"},
+  {nombre:"Juan de la Cruz - 750 ML",cat:"Ron Caldas"},
+  {nombre:"Don Julio 70 Cristalino - 700 ML",cat:"Tequila"},
+  {nombre:"Don Julio Blanco - 700 ML",cat:"Tequila"},
+  {nombre:"1800 Cristalino - 750 ML",cat:"Tequila"},
+  {nombre:"1800 Anejo - 750 ML",cat:"Tequila"},
+  {nombre:"1800 Reposado - 750 ML",cat:"Tequila"},
+  {nombre:"1800 Blanco - 750 ML",cat:"Tequila"},
+  {nombre:"Jose Cuervo Tradicional - 750 ML",cat:"Tequila"},
+  {nombre:"Jose Cuervo Plata - 750 ML",cat:"Tequila"},
+  {nombre:"Jose Cuervo Reposado - 750 ML",cat:"Tequila"},
+  {nombre:"Old Parr 12 anos - 500 ML",cat:"Whisky"},
+  {nombre:"Old Parr 12 anos - 750 ML",cat:"Whisky"},
+  {nombre:"Old Parr 12 anos - 1 LT",cat:"Whisky"},
+  {nombre:"Buchanans Deluxe - 375 ML",cat:"Whisky"},
+  {nombre:"Buchanans Deluxe - 750 ML",cat:"Whisky"},
+  {nombre:"Buchanans Deluxe - 1 LT",cat:"Whisky"},
+  {nombre:"Buchanans Master - 750 ML",cat:"Whisky"},
+  {nombre:"Buchanans Master - 1 LT",cat:"Whisky"},
+  {nombre:"Famous Grouse - 750 ML",cat:"Whisky"},
+  {nombre:"Black Label - 750 ML",cat:"Whisky"},
+  {nombre:"Double Black - 750 ML",cat:"Whisky"},
+  {nombre:"Smirnoff Tamarindo - 750 ML",cat:"Vodka"},
+  {nombre:"JP. Chenet Blanco - 750 ML",cat:"Vino"},
+  {nombre:"JP. Chenet Rosado - 750 ML",cat:"Vino"},
+  {nombre:"Cerveza Coronita - 210 ML",cat:"Cervezas"},
+  {nombre:"Cerveza Costenita - 175 ML",cat:"Cervezas"},
+  {nombre:"Servicio de Michelada - 415 ML",cat:"Cervezas"},
+  {nombre:"Cerveza Club Colombia - 330 ML",cat:"Cervezas"},
+  {nombre:"Cerveza Poker - 250 ML",cat:"Cervezas"},
+  {nombre:"Cerveza BBC - 330 ML",cat:"Cervezas"},
+  {nombre:"Cerveza Aguila Negra - 330 ML",cat:"Cervezas"},
+  {nombre:"Cerveza Budweiser - 250 ML",cat:"Cervezas"},
+  {nombre:"Cerveza Heineken - 330 ML",cat:"Cervezas"},
+  {nombre:"Agua Pool - 600 ML",cat:"Aguas y refrescos"},
+  {nombre:"Bretana - 300 ML",cat:"Aguas y refrescos"},
+  {nombre:"Coca Cola - 400 ML",cat:"Aguas y refrescos"},
+  {nombre:"Soda Saborizada - 415 ML",cat:"Sodas"},
+  {nombre:"Electrolit - 625 ML",cat:"Energizantes"},
+  {nombre:"Gatorade - 500 ML",cat:"Energizantes"},
+];
+
+const SECTIONS=['bodega','enfriadores','exhibicion'];
+const LABELS={bodega:'Bodega',enfriadores:'Enfriadores',exhibicion:'Exhibicion'};
+const state={};
+SECTIONS.forEach(s=>{state[s]={products:PRODUCTS.map(p=>({...p,qty:null})),search:'',filter:'Todos'}});
+let activeTab='bodega';
+
+function switchTab(s){
+  activeTab=s;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelector(`.tab[data-s="${s}"]`).classList.add('active');
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById(`panel-${s}`).classList.add('active');
+  render(s);
+}
+
+function render(s){
+  const sec=state[s], sv=sec.search.toLowerCase(), fv=sec.filter;
+  const filtered=sec.products.filter(p=>{
+    const ms=p.nombre.toLowerCase().includes(sv);
+    const mf=fv==='Todos'||p.cat===fv;
+    return ms&&mf;
+  });
+  const filledCount=sec.products.filter(p=>p.qty!==null&&p.qty>0).length;
+  const totalUnits=sec.products.reduce((a,p)=>a+(p.qty||0),0);
+  const cats=[...new Set(sec.products.map(p=>p.cat))];
+
+  let h=`<div class="toolbar">
+    <div class="search-wrap"><input type="text" class="search-input" placeholder="Buscar producto..." value="${esc(sec.search)}" oninput="updateSearch('${s}',this.value)"></div>
+    <button class="btn btn-add-new" onclick="openModal('${s}')">+ Nuevo</button>
+    <button class="btn btn-pdf" onclick="downloadPDF('${s}')">&#x1F4C4; PDF</button>
+    <button class="btn btn-clear" onclick="clearQtys('${s}')">Limpiar</button>
+  </div>
+  <div class="filter-pills">
+    <div class="filter-pill ${fv==='Todos'?'active':''}" onclick="setFilter('${s}','Todos')">Todos</div>
+    ${cats.map(c=>`<div class="filter-pill ${fv===c?'active':''}" onclick="setFilter('${s}','${esc(c)}')">${esc(c)}</div>`).join('')}
+  </div>`;
+
+  if(!filtered.length){
+    h+=`<div class="empty-state"><p>Sin resultados</p><p>Intenta con otro termino o filtro</p></div>`;
+  } else {
+    h+=`<div class="products-grid">`;
+    filtered.forEach(p=>{
+      const ri=sec.products.indexOf(p);
+      const hq=p.qty!==null&&p.qty>0;
+      h+=`<div class="product-card ${hq?'has-qty':''}">
+        <div class="product-info">
+          <div class="product-name" title="${esc(p.nombre)}">${esc(p.nombre)}</div>
+          <div class="product-cat">${esc(p.cat)}</div>
+        </div>
+        <div class="qty-control">
+          <button class="qty-btn" onclick="adj('${s}',${ri},-1)">-</button>
+          <input type="number" class="qty-input" min="0" value="${p.qty!==null?p.qty:''}" placeholder="0" onchange="setQty('${s}',${ri},this.value)" onfocus="this.select()">
+          <button class="qty-btn" onclick="adj('${s}',${ri},1)">+</button>
+        </div>
+      </div>`;
+    });
+    h+=`</div>`;
+  }
+  h+=`<div class="summary-bar">
+    <span class="total-label">Productos contados: <strong>${filledCount}</strong> / ${sec.products.length}</span>
+    <span class="total-value">${totalUnits} unidades</span>
+  </div>`;
+  document.getElementById(`panel-${s}`).innerHTML=h;
+  updateStats();
+}
+
+function updateSearch(s,v){state[s].search=v;render(s)}
+function setFilter(s,c){state[s].filter=c;render(s)}
+function setQty(s,i,v){const n=parseInt(v);state[s].products[i].qty=isNaN(n)||n<0?null:n;render(s)}
+function adj(s,i,d){const c=state[s].products[i].qty||0;state[s].products[i].qty=Math.max(0,c+d);render(s)}
+
+function clearQtys(s){
+  if(!state[s].products.some(p=>p.qty>0))return;
+  if(!confirm(`Limpiar todas las cantidades de ${LABELS[s]}?`))return;
+  state[s].products.forEach(p=>p.qty=null);render(s);
+  showToast(`${LABELS[s]} limpiado`,'error');
+}
+
+function updateStats(){
+  SECTIONS.forEach(s=>{
+    const t=state[s].products.reduce((a,p)=>a+(p.qty||0),0);
+    const f=state[s].products.filter(p=>p.qty!==null&&p.qty>0).length;
+    document.getElementById(`stat-${s}`).textContent=t;
+    document.getElementById(`count-${s}`).textContent=f;
+  });
+}
+
+function openModal(s){
+  document.getElementById('modal-section').value=s;
+  document.getElementById('modal-nombre').value='';
+  document.getElementById('modal').classList.add('show');
+  setTimeout(()=>document.getElementById('modal-nombre').focus(),100);
+}
+function closeModal(){document.getElementById('modal').classList.remove('show')}
+
+function addNewProduct(){
+  const nombre=document.getElementById('modal-nombre').value.trim();
+  const cat=document.getElementById('modal-cat').value;
+  const secVal=document.getElementById('modal-section').value;
+  if(!nombre){showToast('Escribe el nombre del producto','error');return}
+  const secs=secVal==='all'?SECTIONS:[secVal];
+  secs.forEach(s=>{
+    if(!state[s].products.some(p=>p.nombre.toLowerCase()===nombre.toLowerCase())){
+      state[s].products.push({nombre,cat,qty:null});
+    }
+  });
+  closeModal();render(activeTab);
+  showToast(`"${nombre}" agregado`,'success');
+}
+
+function downloadPDF(s){
+  const items=state[s].products.filter(p=>p.qty!==null&&p.qty>0);
+  if(!items.length){showToast('No hay productos con cantidad para descargar','error');return}
+  const{jsPDF}=window.jspdf;
+  const doc=new jsPDF();
+  const now=new Date();
+  const ds=now.toLocaleString('es-CO',{dateStyle:'long',timeStyle:'short'});
+
+  doc.setFontSize(18);doc.setFont('helvetica','bold');
+  doc.text(`Santorini Bar - Inventario ${LABELS[s]}`,14,20);
+  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(120,120,120);
+  doc.text(`Fecha: ${ds}`,14,28);
+  doc.text(`Productos contados: ${items.length} / ${state[s].products.length}`,14,33);
+  const tu=items.reduce((a,p)=>a+p.qty,0);
+  doc.text(`Total unidades: ${tu}`,14,38);
+  doc.setDrawColor(200,200,200);doc.line(14,42,196,42);
+
+  const grouped={};
+  items.forEach(p=>{if(!grouped[p.cat])grouped[p.cat]=[];grouped[p.cat].push(p)});
+  const tableData=[];let idx=1;
+  Object.keys(grouped).sort().forEach(cat=>{
+    tableData.push([{content:cat.toUpperCase(),colSpan:3,styles:{fontStyle:'bold',fillColor:[35,38,45],textColor:[220,220,225],fontSize:8}}]);
+    grouped[cat].forEach(p=>{tableData.push([idx++,p.nombre,p.qty])});
+  });
+  tableData.push([{content:'TOTAL',colSpan:2,styles:{fontStyle:'bold',fillColor:[25,28,35],textColor:[255,255,255]}},{content:tu,styles:{fontStyle:'bold',fillColor:[25,28,35],textColor:[255,255,255],halign:'center'}}]);
+
+  doc.autoTable({
+    head:[['#','Producto','Cantidad']],body:tableData,startY:46,theme:'grid',
+    headStyles:{fillColor:[30,30,35],textColor:[230,230,235],fontStyle:'bold',fontSize:9},
+    bodyStyles:{fontSize:8.5,textColor:[50,50,50]},
+    alternateRowStyles:{fillColor:[248,248,250]},
+    columnStyles:{0:{cellWidth:15,halign:'center'},2:{cellWidth:28,halign:'center',fontStyle:'bold'}}
+  });
+
+  doc.save(`inventario_${s}_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.pdf`);
+  showToast('PDF descargado','success');
+}
+
+function showToast(m,t){
+  const el=document.getElementById('toast');
+  el.className=`toast toast-${t} show`;
+  el.innerHTML=`${t==='success'?'&#x2713;':'&#x26A0;'} ${m}`;
+  setTimeout(()=>el.classList.remove('show'),2500);
+}
+function esc(t){const d=document.createElement('div');d.textContent=t;return d.innerHTML}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+SECTIONS.forEach(s=>render(s));
+</script>
+</body>
+</html>
